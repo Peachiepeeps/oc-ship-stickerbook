@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OC Ship Stickerbook 💕</title>
+<style>
+* { box-sizing:border-box; }
+html,body { margin:0; width:100%; min-height:100%; }
+body {
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  background:#f8eaf5;
+  font-family:sans-serif;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.book {
+  position:relative;
+  width:min(96vw,1100px);
+  aspect-ratio:2048/1482;
+  touch-action:pan-y;
+  perspective:1800px;
+}
+.notebook {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:contain;
+  display:block;
+  pointer-events:none;
+}
+.page-area {
+  position:absolute;
+  left:50.8%; right:3.9%; top:6%; bottom:3.8%;
+  transform-style:preserve-3d;
+  z-index:10;
+}
+.page-surface {
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  border:4px solid #161616;
+  border-radius:25px 28px 28px 25px;
+  background:
+    linear-gradient(to right, transparent 0 10%, rgba(235,164,188,.55) 10.2% 10.65%, transparent 10.9% 100%),
+    repeating-linear-gradient(to bottom,
+      #fbf4f5 0px, #fbf4f5 35px,
+      rgba(195,190,245,.42) 36px, rgba(195,190,245,.42) 41px,
+      #fbf4f5 42px, #fbf4f5 47px);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);
+  backface-visibility:hidden;
+}
+.page-front, .page-back {
+  position:absolute; inset:0;
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+}
+.page-back { transform:rotateY(180deg); }
+.turning-page {
+  position:absolute;
+  inset:0;
+  transform-origin:left center;
+  transform-style:preserve-3d;
+  z-index:50;
+  display:none;
+}
+.turning-page.active { display:block; }
+.turning-page.forward { animation:flipForward 720ms cubic-bezier(.2,.72,.2,1) both; }
+.turning-page.back { animation:flipBack 720ms cubic-bezier(.2,.72,.2,1) both; }
+
+@keyframes flipForward {
+  0% { transform:rotateY(0deg); box-shadow:0 0 0 rgba(40,20,40,0); }
+  35% { box-shadow:-22px 0 32px rgba(40,20,40,.12); }
+  100% { transform:rotateY(-180deg); box-shadow:0 0 0 rgba(40,20,40,0); }
+}
+@keyframes flipBack {
+  0% { transform:rotateY(0deg); box-shadow:0 0 0 rgba(40,20,40,0); }
+  35% { box-shadow:22px 0 32px rgba(40,20,40,.12); }
+  100% { transform:rotateY(180deg); box-shadow:0 0 0 rgba(40,20,40,0); }
+}
+
+.stickers {
+  position:absolute;
+  inset:0;
+}
+.sticker {
+  position:absolute;
+  width:clamp(90px,17%,190px);
+  height:auto;
+  cursor:grab;
+  touch-action:none;
+  pointer-events:auto;
+}
+.sticker:active { cursor:grabbing; }
+.left-stickers, .right-stickers {
+  position:absolute;
+  pointer-events:none;
+  z-index:12;
+}
+.left-stickers {
+  left:4.2%; right:50.5%; top:6%; bottom:3.8%;
+}
+.right-stickers {
+  left:50.8%; right:3.9%; top:6%; bottom:3.8%;
+}
+.left-stickers .sticker, .right-stickers .sticker { pointer-events:auto; }
+
+.spread { display:none; }
+.spread.active { display:block; }
+
+.nav {
+  position:absolute; top:8%; bottom:4%; width:32%; z-index:100;
+  cursor:pointer;
+}
+.nav-left { left:4%; }
+.nav-right { right:4%; }
+.nav.disabled { pointer-events:none; }
+
+@media (prefers-reduced-motion:reduce) {
+  .turning-page.forward,.turning-page.back { animation-duration:1ms; }
+}
+@media(max-width:650px) {
+  .book { width:100vw; }
+  .sticker { width:clamp(65px,18%,130px); }
+}
+</style>
+</head>
+<body>
+<div class="book" id="book">
+  <img class="notebook" src="notebook.png" alt="Notebook">
+
+  <!-- The current spread's stickers are split by side. -->
+  <div id="leftStickers" class="left-stickers"></div>
+  <div id="rightStickers" class="right-stickers"></div>
+
+  <!-- The physical sheet that flips. Its front is the current right page;
+       its back is the next left page. -->
+  <div id="turningPage" class="turning-page">
+    <div class="page-front page-surface">
+      <div id="turnFrontStickers" class="stickers"></div>
+    </div>
+    <div class="page-back page-surface">
+      <div id="turnBackStickers" class="stickers"></div>
+    </div>
+  </div>
+
+  <div class="nav nav-left" id="prevPage"></div>
+  <div class="nav nav-right" id="nextPage"></div>
+</div>
+
+<script>
+const book = document.getElementById("book");
+const leftStickers = document.getElementById("leftStickers");
+const rightStickers = document.getElementById("rightStickers");
+const turnFrontStickers = document.getElementById("turnFrontStickers");
+const turnBackStickers = document.getElementById("turnBackStickers");
+const turningPage = document.getElementById("turningPage");
+const prev = document.getElementById("prevPage");
+const next = document.getElementById("nextPage");
+
+let page = 0;
+let turning = false;
+
+/*
+  Each spread can have stickers on either page.
+  x/y are percentages of that individual page.
+*/
+const spreads = [
+  {
+    left: [
+      {src:"green-purple-ship.png", x:4, y:4, w:24}
+    ],
+    right: [
+      {src:"blonde-brown-ship.png", x:27, y:17, w:24}
+    ]
+  },
+  {
+    left: [
+      {src:"demon-cat-ship.png", x:6, y:8, w:24}
+    ],
+    right: [
+      {src:"blue-pink-ship.png", x:10, y:16, w:25}
+    ]
+  },
+  {
+    left: [
+      {src:"bunny-mouse-ship.png", x:31, y:28, w:25}
+    ],
+    right: []
+  }
+];
+
+function makeSticker(item) {
+  const img = document.createElement("img");
+  img.className = "sticker";
+  img.src = item.src;
+  img.alt = "";
+  img.draggable = false;
+  img.style.left = item.x + "%";
+  img.style.top = item.y + "%";
+  img.style.width = item.w + "%";
+  enableDragging(img);
+  return img;
+}
+
+function renderSide(container, items) {
+  container.innerHTML = "";
+  items.forEach(item => container.appendChild(makeSticker(item)));
+}
+
+function renderSpread(index) {
+  renderSide(leftStickers, spreads[index].left);
+  renderSide(rightStickers, spreads[index].right);
+}
+
+function renderStickerInto(container, items) {
+  container.innerHTML = "";
+  items.forEach(item => container.appendChild(makeSticker(item)));
+}
+
+function updateNav() {
+  prev.classList.toggle("disabled", page === 0 || turning);
+  next.classList.toggle("disabled", page === spreads.length - 1 || turning);
+}
+
+function go(direction) {
+  if (turning) return;
+  const target = page + direction;
+  if (target < 0 || target >= spreads.length) return;
+
+  turning = true;
+  updateNav();
+
+  /*
+    Before the sheet moves:
+    - current left stays visible
+    - current right is copied onto the front of the sheet
+    - target left is copied onto the back
+    - target right is placed underneath on the right
+  */
+  const current = spreads[page];
+  const targetSpread = spreads[target];
+
+  renderStickerInto(turnFrontStickers, current.right);
+  renderStickerInto(turnBackStickers, targetSpread.left);
+
+  // Target right becomes visible underneath the flipping sheet.
+  renderSide(rightStickers, targetSpread.right);
+
+  // Keep current left visible during the turn.
+  renderSide(leftStickers, current.left);
+
+  turningPage.className = "turning-page active " + (direction > 0 ? "forward" : "back");
+
+  const duration = 720;
+  setTimeout(() => {
+    page = target;
+    turningPage.className = "turning-page";
+    renderSpread(page);
+    turning = false;
+    updateNav();
+  }, duration);
+}
+
+next.addEventListener("click", () => go(1));
+prev.addEventListener("click", () => go(-1));
+
+let sx = null, sy = null;
+book.addEventListener("pointerdown", e => {
+  if (e.target.classList.contains("sticker")) return;
+  sx = e.clientX; sy = e.clientY;
+});
+book.addEventListener("pointerup", e => {
+  if (sx === null) return;
+  const dx = e.clientX - sx, dy = e.clientY - sy;
+  sx = sy = null;
+  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+  if (dx < 0) go(1); else go(-1);
+});
+
+function enableDragging(sticker) {
+  let dragging = false, startX, startY, startLeft, startTop;
+
+  sticker.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragging = true;
+    sticker.setPointerCapture(e.pointerId);
+
+    const parent = sticker.parentElement.getBoundingClientRect();
+    const r = sticker.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    startLeft = r.left - parent.left;
+    startTop = r.top - parent.top;
+  });
+
+  sticker.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    const parent = sticker.parentElement.getBoundingClientRect();
+    let x = startLeft + (e.clientX - startX);
+    let y = startTop + (e.clientY - startY);
+    x = Math.max(0, Math.min(x, parent.width - sticker.offsetWidth));
+    y = Math.max(0, Math.min(y, parent.height - sticker.offsetHeight));
+    sticker.style.left = (x / parent.width * 100) + "%";
+    sticker.style.top = (y / parent.height * 100) + "%";
+  });
+
+  const stop = e => {
+    dragging = false;
+    try { sticker.releasePointerCapture(e.pointerId); } catch {}
+  };
+  sticker.addEventListener("pointerup", stop);
+  sticker.addEventListener("pointercancel", stop);
+}
+
+renderSpread(0);
+updateNav();
+</script>
+</body>
+</html>
