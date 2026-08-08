@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OC Ship Stickerbook ♡</title>
+
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #f8eaf5;
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ---------- Notebook ---------- */
+
+.book {
+    position: relative;
+    width: min(96vw, 1100px);
+    aspect-ratio: 2048 / 1482;
+    touch-action: pan-y;
+}
+
+.notebook {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.paper-stage {
+    position: absolute;
+    left: 55.15%;
+    top: 7.35%;
+    width: 40.5%;
+    height: 86.7%;
+    transform-style: preserve-3d;
+    perspective: 1800px;
+    z-index: 5;
+}
+
+.left-page {
+    position: absolute;
+    inset: 0;
+    background: url("left-page.png") center / 100% 100% no-repeat;
+}
+
+.turning-page {
+    position: absolute;
+    inset: 0;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    z-index: 10;
+}
+
+.page-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    background: url("right-page.png") center / 100% 100% no-repeat;
+}
+
+.page-back {
+    transform: rotateY(180deg);
+    background-image: url("left-page.png");
+}
+
+.spread-sticker-stage {
+    position: absolute;
+    left: 4.6%;
+    top: 7.35%;
+    width: 90.8%;
+    height: 86.7%;
+    z-index: 25;
+    pointer-events: none;
+}
+
+.sticker-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.sticker {
+    position: absolute;
+    width: clamp(75px, 13.5%, 190px);
+    height: auto;
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
+    z-index: 30;
+}
+
+.sticker:active { cursor: grabbing; }
+.sticker.dragging { z-index: 999; }
+
+.turning-page.turn-forward {
+    animation: physicalForward 720ms cubic-bezier(.18,.72,.28,1) both;
+}
+
+.turning-page.turn-back {
+    animation: physicalBack 720ms cubic-bezier(.18,.72,.28,1) both;
+}
+
+.paper-stage::after {
+    content: "";
+    position: absolute;
+    top: -1%;
+    bottom: -1%;
+    left: 0;
+    width: 32%;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(65,45,70,0),
+        rgba(65,45,70,.16),
+        rgba(255,255,255,.20),
+        rgba(65,45,70,0)
+    );
+}
+
+.paper-stage.shadow-forward::after {
+    animation: foldShadow 720ms ease-in-out both;
+}
+
+.paper-stage.shadow-back::after {
+    animation: foldShadowBack 720ms ease-in-out both;
+}
+
+@keyframes physicalForward {
+    0%   { transform: rotateY(0deg); filter: brightness(1); }
+    28%  { transform: rotateY(-34deg); filter: brightness(.98); }
+    55%  { transform: rotateY(-102deg); filter: brightness(.91); }
+    76%  { transform: rotateY(-154deg); filter: brightness(.97); }
+    100% { transform: rotateY(-180deg); filter: brightness(1); }
+}
+
+@keyframes physicalBack {
+    0%   { transform: rotateY(-180deg); filter: brightness(1); }
+    28%  { transform: rotateY(-146deg); filter: brightness(.98); }
+    55%  { transform: rotateY(-78deg); filter: brightness(.91); }
+    76%  { transform: rotateY(-26deg); filter: brightness(.97); }
+    100% { transform: rotateY(0deg); filter: brightness(1); }
+}
+
+@keyframes foldShadow {
+    0%   { opacity: 0; transform: translateX(-40%) scaleX(.5); }
+    45%  { opacity: .7; transform: translateX(0) scaleX(1); }
+    75%  { opacity: .22; transform: translateX(55%) scaleX(.65); }
+    100% { opacity: 0; transform: translateX(90%) scaleX(.4); }
+}
+
+@keyframes foldShadowBack {
+    0%   { opacity: 0; transform: translateX(90%) scaleX(.4); }
+    45%  { opacity: .7; transform: translateX(0) scaleX(1); }
+    75%  { opacity: .22; transform: translateX(-55%) scaleX(.65); }
+    100% { opacity: 0; transform: translateX(-90%) scaleX(.4); }
+}
+
+.nav {
+    position: absolute;
+    top: 8%;
+    bottom: 5%;
+    width: 29%;
+    z-index: 15;
+    cursor: pointer;
+}
+
+.nav-left { left: 4%; }
+.nav-right { right: 4%; }
+.nav.disabled { pointer-events: none; }
+
+/* ---------- Cute simple sticker drawer ---------- */
+
+.drawer {
+    position: fixed;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: min(280px, 38vw);
+    max-height: min(72vh, 600px);
+    z-index: 500;
+    background:
+        linear-gradient(rgba(255,255,255,.86), rgba(255,255,255,.86)),
+        repeating-linear-gradient(
+            0deg,
+            transparent 0 28px,
+            rgba(235, 194, 214, .34) 28px 29px
+        );
+    border: 4px solid white;
+    border-radius: 26px;
+    box-shadow: 0 10px 30px rgba(123, 75, 103, .20);
+    overflow: hidden;
+}
+
+.drawer::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(241, 164, 190, .45);
+    pointer-events: none;
+}
+
+.drawer-header {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 12px 10px 22px;
+    background: rgba(250, 220, 233, .92);
+    border-bottom: 2px dashed rgba(255,255,255,.92);
+    cursor: grab;
+    touch-action: none;
+}
+
+.drawer-header:active {
+    cursor: grabbing;
+}
+
+.drawer-title {
+    color: #9c5577;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: .3px;
+}
+
+.drawer-controls {
+    display: flex;
+    gap: 6px;
+}
+
+.drawer-controls button {
+    width: 29px;
+    height: 29px;
+    display: grid;
+    place-items: center;
+    border: 2px solid white;
+    border-radius: 50%;
+    background: #fffafc;
+    color: #a45f7f;
+    font: inherit;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(122,73,99,.10);
+}
+
+.drawer-body {
+    position: relative;
+    z-index: 1;
+    padding: 12px 12px 16px 24px;
+    overflow-y: auto;
+    max-height: calc(min(72vh, 600px) - 56px);
+}
+
+.drawer-help {
+    margin: 0 0 10px;
+    color: #aa6d89;
+    font-size: 12px;
+    text-align: center;
+}
+
+.sticker-palette {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 9px;
+}
+
+.palette-sticker {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    padding: 4px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.58);
+    cursor: grab;
+    touch-action: none;
+}
+
+.palette-sticker:active { cursor: grabbing; }
+
+.drawer-tab {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 500;
+    display: none;
+    border: 3px solid white;
+    border-right: 0;
+    border-radius: 20px 0 0 20px;
+    background: #f8d9e8;
+    color: #9d5278;
+    padding: 12px 10px;
+    font-weight: 800;
+    box-shadow: 0 5px 18px rgba(120,70,100,.18);
+    cursor: pointer;
+}
+
+.drawer.closed { display: none; }
+.drawer.closed + .drawer-tab { display: block; }
+
+.drawer.minimized {
+    width: 146px;
+    max-height: none;
+}
+
+.drawer.minimized .drawer-body {
+    display: none;
+}
+
+.drawer.minimized .drawer-header {
+    border-bottom: 0;
+    padding: 9px 9px 9px 15px;
+}
+
+.drawer.minimized .drawer-title {
+    font-size: 14px;
+}
+
+.drawer.minimized .minimize-button {
+    transform: rotate(180deg);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 700px) {
+    .drawer {
+        right: 7px;
+        width: min(260px, 72vw);
+        max-height: 62vh;
+    }
+
+    .drawer-body {
+        max-height: calc(62vh - 56px);
+    }
+
+    .drawer-tab {
+        font-size: 13px;
+        padding: 10px 8px;
+    }
+
+    .sticker {
+        width: clamp(58px, 27%, 125px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .turning-page,
+    .paper-stage::after {
+        animation-duration: 1ms !important;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="book" id="book">
+    <img class="notebook" src="notebook.png" alt="OC ship stickerbook">
+
+    <div class="paper-stage" id="paperStage">
+        <div class="left-page"></div>
+
+        <div class="turning-page" id="turningPage">
+            <div class="page-face"></div>
+            <div class="page-face page-back"></div>
+        </div>
+
+    </div>
+
+    <div class="spread-sticker-stage" id="spreadStickerStage">
+        <div class="sticker-layer" id="stickerLayer"></div>
+    </div>
+
+    <div class="nav nav-left" id="prevPage"></div>
+    <div class="nav nav-right" id="nextPage"></div>
+</div>
+
+<div class="drawer" id="drawer">
+    <div class="drawer-header">
+        <span class="drawer-title">♡ stickers</span>
+
+        <div class="drawer-controls">
+            <button class="minimize-button" id="minimizeDrawer" title="Minimize">−</button>
+            <button class="close-button" id="closeDrawer" title="Close">×</button>
+        </div>
+    </div>
+
+    <div class="drawer-body">
+        <p class="drawer-help">drag a sticker onto either page ♡<br><span style="opacity:.75">drag this box by its pink top</span></p>
+        <div class="sticker-palette" id="stickerPalette"></div>
+    </div>
+</div>
+
+<button class="drawer-tab" id="openDrawer">♡ stickers</button>
+
+<script>
+const book = document.getElementById("book");
+const paperStage = document.getElementById("paperStage");
+const spreadStickerStage = document.getElementById("spreadStickerStage");
+const turningPage = document.getElementById("turningPage");
+const stickerLayer = document.getElementById("stickerLayer");
+const prevPage = document.getElementById("prevPage");
+const nextPage = document.getElementById("nextPage");
+
+const drawer = document.getElementById("drawer");
+const openDrawer = document.getElementById("openDrawer");
+const closeDrawer = document.getElementById("closeDrawer");
+const minimizeDrawer = document.getElementById("minimizeDrawer");
+const palette = document.getElementById("stickerPalette");
+
+/*
+  If index.html is opened directly from a computer, browsers may block
+  fetching stickers.json. This fallback lets the included demo still work.
+  On GitHub Pages, stickers.json is loaded automatically.
+*/
+const fallbackStickers = [
+    "IMG_8915.png",
+    "IMG_8916.png",
+    "IMG_8917.png",
+    "IMG_8918.png",
+    "IMG_8919.png"
+];
+
+let stickerFiles = [];
+
+/* Six blank spreads. Increase this number whenever you want more pages. */
+const PAGE_COUNT = 6;
+
+const pages = Array.from({ length: PAGE_COUNT }, () => ({
+    stickers: []
+}));
+
+/* Pages start blank so visitors can make their own stickerbook. */
+
+let currentPage = 0;
+let turning = false;
+
+/* ---------- Automatic sticker loading ---------- */
+
+async function loadStickerList() {
+    try {
+        const response = await fetch("stickers.json", { cache: "no-store" });
+
+        if (!response.ok) {
+            throw new Error("Could not load stickers.json");
+        }
+
+        const files = await response.json();
+
+        stickerFiles = files.filter(name =>
+            /\.(png|jpe?g|webp|gif)$/i.test(name)
+        );
+    } catch (error) {
+        console.warn("Using built-in sticker list.", error);
+        stickerFiles = fallbackStickers;
+    }
+
+    renderPalette();
+    restoreLayout();
+
+    /* Remove any saved stickers whose image no longer exists. */
+    const allowed = new Set(stickerFiles);
+    pages.forEach(page => {
+        page.stickers = page.stickers.filter(item => allowed.has(item.file));
+    });
+
+    saveLayout();
+    renderPageStickers();
+    updateNav();
+}
+
+function stickerPath(file) {
+    return "stickers/" + file;
+}
+
+/* ---------- Drawer ---------- */
+
+function prettyName(filename) {
+    return filename
+        .replace(/\.[^.]+$/, "")
+        .replace(/[-_]+/g, " ");
+}
+
+function renderPalette() {
+    palette.innerHTML = "";
+
+    stickerFiles.forEach(file => {
+        const img = document.createElement("img");
+        img.className = "palette-sticker";
+        img.src = stickerPath(file);
+        img.alt = prettyName(file);
+        img.title = "Drag onto the notebook";
+        img.draggable = false;
+
+        img.addEventListener("pointerdown", event => {
+            event.preventDefault();
+            startPaletteDrag(file, event);
+        });
+
+        palette.appendChild(img);
+    });
+}
+
+function startPaletteDrag(file, event) {
+    const clone = document.createElement("img");
+    clone.className = "sticker dragging";
+    clone.src = stickerPath(file);
+    clone.alt = "";
+    clone.draggable = false;
+    clone.style.position = "fixed";
+    clone.style.width = Math.min(150, window.innerWidth * .18) + "px";
+    clone.style.left = event.clientX + "px";
+    clone.style.top = event.clientY + "px";
+    clone.style.transform = "translate(-50%, -50%)";
+    clone.style.pointerEvents = "none";
+    clone.style.zIndex = "1000";
+
+    document.body.appendChild(clone);
+
+    const move = e => {
+        clone.style.left = e.clientX + "px";
+        clone.style.top = e.clientY + "px";
+    };
+
+    const end = e => {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", end);
+        document.removeEventListener("pointercancel", end);
+
+        const stageRect = spreadStickerStage.getBoundingClientRect();
+
+        const inside =
+            e.clientX >= stageRect.left &&
+            e.clientX <= stageRect.right &&
+            e.clientY >= stageRect.top &&
+            e.clientY <= stageRect.bottom;
+
+        clone.remove();
+
+        if (!inside) return;
+
+        const x = Math.max(
+            0,
+            Math.min(
+                86,
+                ((e.clientX - stageRect.left) / stageRect.width) * 100 - 7
+            )
+        );
+
+        const y = Math.max(
+            0,
+            Math.min(
+                80,
+                ((e.clientY - stageRect.top) / stageRect.height) * 100 - 10
+            )
+        );
+
+        pages[currentPage].stickers.push({ file, x, y });
+        saveLayout();
+        renderPageStickers();
+    };
+
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", end);
+    document.addEventListener("pointercancel", end);
+}
+
+minimizeDrawer.addEventListener("click", () => {
+    drawer.classList.toggle("minimized");
+});
+
+closeDrawer.addEventListener("click", () => {
+    drawer.classList.add("closed");
+});
+
+openDrawer.addEventListener("click", () => {
+    drawer.classList.remove("closed");
+    drawer.classList.remove("minimized");
+});
+
+
+/* ---------- Move the sticker drawer ---------- */
+
+let movingDrawer = false;
+let drawerOffsetX = 0;
+let drawerOffsetY = 0;
+
+const drawerHeader = drawer.querySelector(".drawer-header");
+
+drawerHeader.addEventListener("pointerdown", event => {
+    if (event.target.closest("button")) return;
+
+    event.preventDefault();
+    movingDrawer = true;
+
+    const rect = drawer.getBoundingClientRect();
+    drawerOffsetX = event.clientX - rect.left;
+    drawerOffsetY = event.clientY - rect.top;
+
+    drawer.style.right = "auto";
+    drawer.style.transform = "none";
+    drawer.style.left = rect.left + "px";
+    drawer.style.top = rect.top + "px";
+
+    drawerHeader.setPointerCapture(event.pointerId);
+});
+
+drawerHeader.addEventListener("pointermove", event => {
+    if (!movingDrawer) return;
+
+    const rect = drawer.getBoundingClientRect();
+
+    let left = event.clientX - drawerOffsetX;
+    let top = event.clientY - drawerOffsetY;
+
+    const maxLeft = Math.max(0, window.innerWidth - rect.width);
+    const maxTop = Math.max(0, window.innerHeight - rect.height);
+
+    left = Math.max(0, Math.min(left, maxLeft));
+    top = Math.max(0, Math.min(top, maxTop));
+
+    drawer.style.left = left + "px";
+    drawer.style.top = top + "px";
+});
+
+function stopMovingDrawer(event) {
+    if (!movingDrawer) return;
+    movingDrawer = false;
+
+    try {
+        drawerHeader.releasePointerCapture(event.pointerId);
+    } catch (_) {}
+}
+
+drawerHeader.addEventListener("pointerup", stopMovingDrawer);
+drawerHeader.addEventListener("pointercancel", stopMovingDrawer);
+
+window.addEventListener("resize", () => {
+    if (!drawer.style.left) return;
+
+    const rect = drawer.getBoundingClientRect();
+    const left = Math.max(0, Math.min(rect.left, window.innerWidth - rect.width));
+    const top = Math.max(0, Math.min(rect.top, window.innerHeight - rect.height));
+
+    drawer.style.left = left + "px";
+    drawer.style.top = top + "px";
+});
+
+/* ---------- Save visitor's scrapbook locally ---------- */
+
+function saveLayout() {
+    try {
+        localStorage.setItem(
+            "ocShipStickerbookLayoutV2",
+            JSON.stringify(pages)
+        );
+    } catch (_) {}
+}
+
+function restoreLayout() {
+    try {
+        const saved = JSON.parse(
+            localStorage.getItem("ocShipStickerbookLayoutV2")
+        );
+
+        if (!Array.isArray(saved)) return;
+
+        for (let i = 0; i < Math.min(saved.length, pages.length); i++) {
+            if (saved[i] && Array.isArray(saved[i].stickers)) {
+                pages[i].stickers = saved[i].stickers;
+            }
+        }
+    } catch (_) {}
+}
+
+/* ---------- Notebook stickers ---------- */
+
+function renderPageStickers() {
+    stickerLayer.innerHTML = "";
+
+    pages[currentPage].stickers.forEach(data => {
+        const img = document.createElement("img");
+        img.className = "sticker";
+        img.src = stickerPath(data.file);
+        img.alt = "";
+        img.draggable = false;
+        img.style.left = data.x + "%";
+        img.style.top = data.y + "%";
+
+        makeStickerDraggable(img, data);
+        stickerLayer.appendChild(img);
+    });
+}
+
+function makeStickerDraggable(img, data) {
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    img.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        dragging = true;
+        img.classList.add("dragging");
+        img.setPointerCapture(event.pointerId);
+
+        const rect = spreadStickerStage.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+
+        startX = event.clientX;
+        startY = event.clientY;
+        startLeft = imgRect.left - rect.left;
+        startTop = imgRect.top - rect.top;
+    });
+
+    img.addEventListener("pointermove", event => {
+        if (!dragging) return;
+
+        const rect = spreadStickerStage.getBoundingClientRect();
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+
+        const x = Math.max(
+            0,
+            Math.min(rect.width - img.offsetWidth, startLeft + dx)
+        );
+
+        const y = Math.max(
+            0,
+            Math.min(rect.height - img.offsetHeight, startTop + dy)
+        );
+
+        data.x = (x / rect.width) * 100;
+        data.y = (y / rect.height) * 100;
+
+        img.style.left = data.x + "%";
+        img.style.top = data.y + "%";
+    });
+
+    const stop = event => {
+        if (!dragging) return;
+
+        dragging = false;
+        img.classList.remove("dragging");
+
+        try {
+            img.releasePointerCapture(event.pointerId);
+        } catch (_) {}
+
+        saveLayout();
+    };
+
+    img.addEventListener("pointerup", stop);
+    img.addEventListener("pointercancel", stop);
+}
+
+/* ---------- Page turning ---------- */
+
+function updateNav() {
+    prevPage.classList.toggle("disabled", currentPage === 0);
+    nextPage.classList.toggle("disabled", currentPage === pages.length - 1);
+}
+
+function turnTo(newPage, direction) {
+    if (
+        turning ||
+        newPage < 0 ||
+        newPage >= pages.length ||
+        newPage === currentPage
+    ) return;
+
+    turning = true;
+    currentPage = newPage;
+    renderPageStickers();
+
+    turningPage.classList.remove("turn-forward", "turn-back");
+    paperStage.classList.remove("shadow-forward", "shadow-back");
+    void turningPage.offsetWidth;
+
+    if (direction === "forward") {
+        turningPage.classList.add("turn-forward");
+        paperStage.classList.add("shadow-forward");
+    } else {
+        turningPage.classList.add("turn-back");
+        paperStage.classList.add("shadow-back");
+    }
+
+    updateNav();
+
+    setTimeout(() => {
+        turningPage.classList.remove("turn-forward", "turn-back");
+        paperStage.classList.remove("shadow-forward", "shadow-back");
+        turning = false;
+    }, 720);
+}
+
+nextPage.addEventListener(
+    "click",
+    () => turnTo(currentPage + 1, "forward")
+);
+
+prevPage.addEventListener(
+    "click",
+    () => turnTo(currentPage - 1, "back")
+);
+
+/* ---------- Swipe navigation ---------- */
+
+let swipeStartX = null;
+let swipeStartY = null;
+
+book.addEventListener("pointerdown", event => {
+    if (event.target.closest(".sticker")) return;
+
+    swipeStartX = event.clientX;
+    swipeStartY = event.clientY;
+});
+
+book.addEventListener("pointerup", event => {
+    if (swipeStartX === null) return;
+
+    const dx = event.clientX - swipeStartX;
+    const dy = event.clientY - swipeStartY;
+
+    swipeStartX = null;
+    swipeStartY = null;
+
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+
+    if (dx < 0) {
+        turnTo(currentPage + 1, "forward");
+    } else {
+        turnTo(currentPage - 1, "back");
+    }
+});
+
+/* ---------- Start ---------- */
+
+loadStickerList();
+</script>
+</body>
+</html>
