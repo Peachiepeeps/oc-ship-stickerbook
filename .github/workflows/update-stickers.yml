@@ -1,0 +1,58 @@
+name: Update sticker list
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "stickers/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-stickers:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Generate stickers.json
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          folder = Path("stickers")
+          allowed = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+
+          files = sorted(
+              p.name for p in folder.iterdir()
+              if p.is_file()
+              and p.suffix.lower() in allowed
+              and not p.name.startswith(".")
+          )
+
+          Path("stickers.json").write_text(
+              json.dumps(files, indent=2) + "\n",
+              encoding="utf-8"
+          )
+
+          print(f"Found {len(files)} sticker(s).")
+          PY
+
+      - name: Commit updated sticker list
+        run: |
+          if git diff --quiet stickers.json; then
+            echo "Sticker list is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add stickers.json
+          git commit -m "Update sticker list"
+          git push
