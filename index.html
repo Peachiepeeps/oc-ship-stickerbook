@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OC Ship Stickerbook 💕</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;min-height:100%}
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;background:#f8eaf5;
+  font-family:sans-serif;user-select:none;-webkit-user-select:none;
+}
+.book{
+  position:relative;width:min(96vw,1100px);aspect-ratio:2048/1482;
+  perspective:1800px;touch-action:pan-y;
+}
+.notebook{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:1}
+.page-stage{
+  position:absolute;inset:0;z-index:5;pointer-events:none;
+}
+.page{
+  position:absolute;
+  top:7.355%; width:40.478%; height:86.572%;
+  background-repeat:no-repeat;background-size:100% 100%;
+  overflow:visible;
+  pointer-events:none;
+}
+.page.left{left:4.346%;background-image:url("left-page.png")}
+.page.right{left:55.176%;background-image:url("right-page.png")}
+
+.page .stickers{
+  position:absolute;inset:0;pointer-events:none;
+}
+.sticker{
+  position:absolute;width:30%;height:auto;cursor:grab;
+  pointer-events:auto;touch-action:none;z-index:10;
+}
+.sticker:active{cursor:grabbing}
+.sticker.dragging{z-index:100}
+
+.turner{
+  position:absolute;top:7.355%;height:86.572%;width:40.478%;
+  transform-style:preserve-3d;backface-visibility:hidden;
+  display:none;z-index:30;pointer-events:none;
+}
+.turner.forward{left:55.176%;transform-origin:left center}
+.turner.back{left:4.346%;transform-origin:right center}
+
+.face{
+  position:absolute;inset:0;
+  background-repeat:no-repeat;background-size:100% 100%;
+  backface-visibility:hidden;
+  overflow:visible;
+}
+.face.front{transform:rotateY(0deg)}
+.face.back{transform:rotateY(180deg)}
+.turner.forward .face.front{background-image:url("right-page.png")}
+.turner.forward .face.back{background-image:url("left-page.png")}
+.turner.back .face.front{background-image:url("left-page.png")}
+.turner.back .face.back{background-image:url("right-page.png")}
+
+.face .sticker{
+  position:absolute;
+}
+
+.turner.forward.play{display:block;animation:forwardFlip 900ms cubic-bezier(.22,.61,.36,1) forwards}
+.turner.back.play{display:block;animation:backFlip 900ms cubic-bezier(.22,.61,.36,1) forwards}
+
+@keyframes forwardFlip{
+  0%{transform:rotateY(0deg);filter:brightness(1);box-shadow:0 0 0 rgba(0,0,0,0)}
+  18%{transform:rotateY(-28deg);filter:brightness(.99);box-shadow:-8px 0 14px rgba(55,35,55,.10)}
+  50%{transform:rotateY(-92deg);filter:brightness(.94);box-shadow:-18px 0 28px rgba(55,35,55,.18)}
+  78%{transform:rotateY(-154deg);filter:brightness(.98);box-shadow:-8px 0 14px rgba(55,35,55,.10)}
+  100%{transform:rotateY(-180deg);filter:brightness(1);box-shadow:0 0 0 rgba(0,0,0,0)}
+}
+@keyframes backFlip{
+  0%{transform:rotateY(0deg);filter:brightness(1);box-shadow:0 0 0 rgba(0,0,0,0)}
+  18%{transform:rotateY(28deg);filter:brightness(.99);box-shadow:8px 0 14px rgba(55,35,55,.10)}
+  50%{transform:rotateY(92deg);filter:brightness(.94);box-shadow:18px 0 28px rgba(55,35,55,.18)}
+  78%{transform:rotateY(154deg);filter:brightness(.98);box-shadow:8px 0 14px rgba(55,35,55,.10)}
+  100%{transform:rotateY(180deg);filter:brightness(1);box-shadow:0 0 0 rgba(0,0,0,0)}
+}
+
+/* A narrow moving shadow along the fold gives the paper some thickness. */
+.turner::after{
+  content:"";position:absolute;top:0;bottom:0;width:2.2%;
+  background:linear-gradient(90deg,rgba(40,20,40,.20),rgba(255,255,255,.18),transparent);
+  opacity:0;pointer-events:none;
+}
+.turner.forward::after{left:-1.1%}
+.turner.back::after{right:-1.1%;transform:scaleX(-1)}
+.turner.play::after{animation:foldShadow 900ms ease-in-out forwards}
+@keyframes foldShadow{
+  0%,100%{opacity:0}
+  45%{opacity:.65}
+  60%{opacity:.28}
+}
+
+.nav{
+  position:absolute;top:7%;bottom:4%;width:31%;z-index:60;cursor:pointer;
+}
+.nav.left{left:4%}.nav.right{right:4%}
+.nav.disabled{pointer-events:none}
+
+@media (prefers-reduced-motion:reduce){
+  .turner.play{animation-duration:1ms!important}
+  .turner.play::after{animation-duration:1ms!important}
+}
+@media(max-width:650px){
+  .book{width:100vw}
+  .sticker{width:34%}
+}
+</style>
+</head>
+<body>
+<div class="book" id="book">
+  <img class="notebook" src="notebook.png" alt="OC ship stickerbook">
+
+  <div class="page-stage" id="stage"></div>
+
+  <div class="turner forward" id="turnForward">
+    <div class="face front" id="forwardFront"></div>
+    <div class="face back" id="forwardBack"></div>
+  </div>
+
+  <div class="turner back" id="turnBack">
+    <div class="face front" id="backFront"></div>
+    <div class="face back" id="backBack"></div>
+  </div>
+
+  <div class="nav left" id="prev" aria-label="Previous page"></div>
+  <div class="nav right" id="next" aria-label="Next page"></div>
+</div>
+
+<script>
+const spreads = [
+  {
+    left: [
+      {src:"green-purple-ship.png", left:4, top:6, width:42}
+    ],
+    right: [
+      {src:"blonde-brown-ship.png", left:18, top:15, width:47}
+    ]
+  },
+  {
+    left: [
+      {src:"demon-cat-ship.png", left:5, top:8, width:48}
+    ],
+    right: [
+      {src:"blue-pink-ship.png", left:10, top:13, width:50}
+    ]
+  },
+  {
+    left: [
+      {src:"bunny-mouse-ship.png", left:17, top:24, width:50}
+    ],
+    right: []
+  }
+];
+
+let current=0;
+let turning=false;
+
+const stage=document.getElementById("stage");
+const turnForward=document.getElementById("turnForward");
+const turnBack=document.getElementById("turnBack");
+const forwardFront=document.getElementById("forwardFront");
+const forwardBack=document.getElementById("forwardBack");
+const backFront=document.getElementById("backFront");
+const backBack=document.getElementById("backBack");
+const prev=document.getElementById("prev");
+const next=document.getElementById("next");
+const book=document.getElementById("book");
+
+function makeSticker(data){
+  const img=document.createElement("img");
+  img.className="sticker";
+  img.src=data.src;
+  img.alt="";
+  img.draggable=false;
+  img.style.left=data.left+"%";
+  img.style.top=data.top+"%";
+  img.style.width=data.width+"%";
+  enableDrag(img);
+  return img;
+}
+
+function renderSpread(index){
+  stage.innerHTML="";
+  const left=document.createElement("div");
+  left.className="page left";
+  const right=document.createElement("div");
+  right.className="page right";
+  const ls=document.createElement("div"); ls.className="stickers";
+  const rs=document.createElement("div"); rs.className="stickers";
+  spreads[index].left.forEach(x=>ls.appendChild(makeSticker(x)));
+  spreads[index].right.forEach(x=>rs.appendChild(makeSticker(x)));
+  left.appendChild(ls); right.appendChild(rs);
+  stage.appendChild(left); stage.appendChild(right);
+  prev.classList.toggle("disabled",index===0);
+  next.classList.toggle("disabled",index===spreads.length-1);
+}
+
+function clearFace(face){
+  face.innerHTML="";
+}
+function fillFace(face, items){
+  clearFace(face);
+  items.forEach(x=>face.appendChild(makeSticker(x)));
+}
+
+function goForward(){
+  if(turning || current>=spreads.length-1) return;
+  turning=true;
+  const target=current+1;
+
+  // The sheet being turned has the current right page on its front
+  // and the next spread's left page on its back.
+  fillFace(forwardFront,spreads[current].right);
+  fillFace(forwardBack,spreads[target].left);
+
+  // Put the next spread underneath before the sheet starts moving.
+  renderSpread(target);
+  turnForward.classList.remove("play");
+  void turnForward.offsetWidth;
+  turnForward.classList.add("play");
+
+  setTimeout(()=>{
+    current=target;
+    renderSpread(current);
+    turnForward.classList.remove("play");
+    turning=false;
+  },900);
+}
+
+function goBack(){
+  if(turning || current<=0) return;
+  turning=true;
+  const target=current-1;
+
+  // Current left is the back of the sheet; its other side is the
+  // previous spread's right page.
+  fillFace(backFront,spreads[current].left);
+  fillFace(backBack,spreads[target].right);
+
+  renderSpread(target);
+  turnBack.classList.remove("play");
+  void turnBack.offsetWidth;
+  turnBack.classList.add("play");
+
+  setTimeout(()=>{
+    current=target;
+    renderSpread(current);
+    turnBack.classList.remove("play");
+    turning=false;
+  },900);
+}
+
+next.addEventListener("click",goForward);
+prev.addEventListener("click",goBack);
+
+let sx=null,sy=null;
+book.addEventListener("pointerdown",e=>{
+  if(e.target.classList.contains("sticker")) return;
+  sx=e.clientX; sy=e.clientY;
+});
+book.addEventListener("pointerup",e=>{
+  if(sx===null) return;
+  const dx=e.clientX-sx, dy=e.clientY-sy;
+  sx=sy=null;
+  if(Math.abs(dx)<60 || Math.abs(dx)<Math.abs(dy)) return;
+  if(dx<0) goForward(); else goBack();
+});
+
+function enableDrag(el){
+  let dragging=false,sx=0,sy=0,sl=0,st=0;
+  el.addEventListener("pointerdown",e=>{
+    e.preventDefault(); e.stopPropagation();
+    dragging=true; el.classList.add("dragging");
+    el.setPointerCapture(e.pointerId);
+    const p=el.parentElement.getBoundingClientRect();
+    const r=el.getBoundingClientRect();
+    sx=e.clientX; sy=e.clientY;
+    sl=r.left-p.left; st=r.top-p.top;
+  });
+  el.addEventListener("pointermove",e=>{
+    if(!dragging)return;
+    const p=el.parentElement.getBoundingClientRect();
+    let x=sl+(e.clientX-sx), y=st+(e.clientY-sy);
+    x=Math.max(0,Math.min(x,p.width-el.offsetWidth));
+    y=Math.max(0,Math.min(y,p.height-el.offsetHeight));
+    el.style.left=(x/p.width*100)+"%";
+    el.style.top=(y/p.height*100)+"%";
+  });
+  const stop=e=>{
+    if(!dragging)return;
+    dragging=false; el.classList.remove("dragging");
+    try{el.releasePointerCapture(e.pointerId)}catch(_){}
+  };
+  el.addEventListener("pointerup",stop);
+  el.addEventListener("pointercancel",stop);
+}
+
+renderSpread(0);
+</script>
+</body>
+</html>
