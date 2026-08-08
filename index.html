@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OC Ship Stickerbook 💕</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+    }
+
+    body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: #f8eaf5;
+        font-family: sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .book {
+        position: relative;
+        width: min(96vw, 1100px);
+        aspect-ratio: 2048 / 1482;
+        touch-action: pan-y;
+    }
+
+    /* The notebook artwork never moves. */
+    .notebook {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        pointer-events: none;
+    }
+
+    /* Stickers live above the notebook. */
+    .spread {
+        position: absolute;
+        inset: 5.8% 4.2% 3.6% 4.2%;
+        perspective: 1400px;
+        pointer-events: none;
+    }
+
+    .sticker {
+        position: absolute;
+        width: clamp(90px, 17%, 190px);
+        height: auto;
+        cursor: grab;
+        pointer-events: auto;
+        touch-action: none;
+        will-change: left, top;
+    }
+
+    .sticker:active {
+        cursor: grabbing;
+    }
+
+    /*
+      Each spread has its own sticker positions.
+      Positions are percentages of the usable notebook area.
+    */
+    .spread-layer {
+        position: absolute;
+        inset: 0;
+        display: none;
+        opacity: 1;
+    }
+
+    .spread-layer.active {
+        display: block;
+    }
+
+    /*
+      Physical-looking page curl.
+      The notebook frame stays still while the current paper appears
+      to bend from the binding and sweep toward the edge.
+    */
+    .spread.turn-forward,
+    .spread.turn-back {
+        transform-style: preserve-3d;
+        overflow: visible;
+    }
+
+    .spread.turn-forward .spread-layer,
+    .spread.turn-back .spread-layer {
+        animation-duration: 650ms;
+        animation-timing-function: cubic-bezier(.22,.61,.36,1);
+        animation-fill-mode: both;
+        backface-visibility: hidden;
+        transform-style: preserve-3d;
+    }
+
+    .spread.turn-forward .spread-layer {
+        animation-name: pageCurlForward;
+        transform-origin: 50% 50%;
+    }
+
+    .spread.turn-back .spread-layer {
+        animation-name: pageCurlBack;
+        transform-origin: 50% 50%;
+    }
+
+    .spread.turn-forward::after,
+    .spread.turn-back::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 28%;
+        pointer-events: none;
+        z-index: 200;
+        opacity: 0;
+        filter: blur(1px);
+        background: linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(70, 45, 70, .04) 28%,
+            rgba(70, 45, 70, .18) 52%,
+            rgba(255,255,255,.28) 67%,
+            transparent 100%
+        );
+    }
+
+    .spread.turn-forward::after {
+        right: 0;
+        animation: pageShadowForward 650ms ease-in-out both;
+    }
+
+    .spread.turn-back::after {
+        left: 0;
+        transform: scaleX(-1);
+        animation: pageShadowBack 650ms ease-in-out both;
+    }
+
+    @keyframes pageCurlForward {
+        0% {
+            transform: perspective(1600px) rotateY(0deg) translateX(0) skewY(0deg);
+            filter: brightness(1);
+        }
+        20% {
+            transform: perspective(1600px) rotateY(-18deg) translateX(-1.5%) skewY(-.5deg);
+            filter: brightness(.99);
+        }
+        48% {
+            transform: perspective(1600px) rotateY(-68deg) translateX(-5%) skewY(-1.2deg);
+            filter: brightness(.94);
+        }
+        70% {
+            transform: perspective(1600px) rotateY(-24deg) translateX(1%) skewY(.3deg);
+            filter: brightness(.985);
+        }
+        88% {
+            transform: perspective(1600px) rotateY(6deg) translateX(0) skewY(0deg);
+            filter: brightness(1);
+        }
+        100% {
+            transform: perspective(1600px) rotateY(0deg) translateX(0) skewY(0deg);
+            filter: brightness(1);
+        }
+    }
+
+    @keyframes pageCurlBack {
+        0% {
+            transform: perspective(1600px) rotateY(0deg) translateX(0) skewY(0deg);
+            filter: brightness(1);
+        }
+        20% {
+            transform: perspective(1600px) rotateY(18deg) translateX(1.5%) skewY(.5deg);
+            filter: brightness(.99);
+        }
+        48% {
+            transform: perspective(1600px) rotateY(68deg) translateX(5%) skewY(1.2deg);
+            filter: brightness(.94);
+        }
+        70% {
+            transform: perspective(1600px) rotateY(24deg) translateX(-1%) skewY(-.3deg);
+            filter: brightness(.985);
+        }
+        88% {
+            transform: perspective(1600px) rotateY(-6deg) translateX(0) skewY(0deg);
+            filter: brightness(1);
+        }
+        100% {
+            transform: perspective(1600px) rotateY(0deg) translateX(0) skewY(0deg);
+            filter: brightness(1);
+        }
+    }
+
+    @keyframes pageShadowForward {
+        0%   { opacity: 0; transform: translateX(35%) scaleX(.65); }
+        38%  { opacity: .65; transform: translateX(0) scaleX(1); }
+        65%  { opacity: .25; transform: translateX(-18%) scaleX(.8); }
+        100% { opacity: 0; transform: translateX(-30%) scaleX(.55); }
+    }
+
+    @keyframes pageShadowBack {
+        0%   { opacity: 0; transform: translateX(-35%) scaleX(.65); }
+        38%  { opacity: .65; transform: translateX(0) scaleX(1); }
+        65%  { opacity: .25; transform: translateX(18%) scaleX(.8); }
+        100% { opacity: 0; transform: translateX(30%) scaleX(.55); }
+    }
+
+    /* Invisible navigation zones. No visible buttons. */
+    .nav {
+        position: absolute;
+        top: 8%;
+        bottom: 4%;
+        width: 32%;
+        z-index: 20;
+        cursor: pointer;
+    }
+
+    .nav-left {
+        left: 4%;
+    }
+
+    .nav-right {
+        right: 4%;
+    }
+
+    .nav.disabled {
+        pointer-events: none;
+    }
+
+    /* Keeps the sticker layer above the click zones while dragging. */
+    .sticker.dragging {
+        z-index: 100;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .spread.turn-forward .spread-layer,
+        .spread.turn-back .spread-layer,
+        .spread.turn-forward::after,
+        .spread.turn-back::after {
+            animation-duration: 1ms !important;
+        }
+    }
+
+    @media (max-width: 650px) {
+        .book {
+            width: 100vw;
+        }
+
+        .sticker {
+            width: clamp(65px, 18%, 130px);
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="book" id="book">
+    <img class="notebook" src="notebook.png" alt="Notebook">
+
+    <div class="spread" id="spread">
+        <!-- SPREAD 1 -->
+        <div class="spread-layer active" data-page="0">
+            <img class="sticker"
+                 src="green-purple-ship.png"
+                 alt=""
+                 style="left: 4%; top: 4%;"
+                 draggable="false">
+
+            <img class="sticker"
+                 src="blonde-brown-ship.png"
+                 alt=""
+                 style="left: 27%; top: 17%;"
+                 draggable="false">
+        </div>
+
+        <!-- SPREAD 2 -->
+        <div class="spread-layer" data-page="1">
+            <img class="sticker"
+                 src="demon-cat-ship.png"
+                 alt=""
+                 style="left: 6%; top: 8%;"
+                 draggable="false">
+
+            <img class="sticker"
+                 src="blue-pink-ship.png"
+                 alt=""
+                 style="left: 53%; top: 16%;"
+                 draggable="false">
+        </div>
+
+        <!-- SPREAD 3 -->
+        <div class="spread-layer" data-page="2">
+            <img class="sticker"
+                 src="bunny-mouse-ship.png"
+                 alt=""
+                 style="left: 31%; top: 28%;"
+                 draggable="false">
+        </div>
+    </div>
+
+    <!-- Invisible click/tap areas -->
+    <div class="nav nav-left" id="prevPage" aria-label="Previous page"></div>
+    <div class="nav nav-right" id="nextPage" aria-label="Next page"></div>
+</div>
+
+<script>
+    const spread = document.getElementById("spread");
+    const layers = [...document.querySelectorAll(".spread-layer")];
+    const prev = document.getElementById("prevPage");
+    const next = document.getElementById("nextPage");
+
+    let currentPage = 0;
+    let turning = false;
+
+    function updateNavigation() {
+        prev.classList.toggle("disabled", currentPage === 0);
+        next.classList.toggle("disabled", currentPage === layers.length - 1);
+    }
+
+    function showPage(newPage, direction) {
+        if (turning || newPage < 0 || newPage >= layers.length || newPage === currentPage) {
+            return;
+        }
+
+        turning = true;
+
+        const oldLayer = layers[currentPage];
+        const newLayer = layers[newPage];
+
+        oldLayer.classList.remove("active");
+        newLayer.classList.add("active");
+
+        spread.classList.remove("turn-forward", "turn-back");
+        void spread.offsetWidth;
+        spread.classList.add(direction === "forward" ? "turn-forward" : "turn-back");
+
+        currentPage = newPage;
+        updateNavigation();
+
+        setTimeout(() => {
+            spread.classList.remove("turn-forward", "turn-back");
+            turning = false;
+        }, 650);
+    }
+
+    next.addEventListener("click", () => showPage(currentPage + 1, "forward"));
+    prev.addEventListener("click", () => showPage(currentPage - 1, "back"));
+
+    /*
+      Dragging stickers:
+      They move only while the current page is open.
+      When the user turns the page, the sticker returns to its
+      original position automatically because the page layer is
+      simply shown again from its original CSS position.
+    */
+    document.querySelectorAll(".sticker").forEach(sticker => {
+        let dragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+
+        sticker.addEventListener("pointerdown", event => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            dragging = true;
+            sticker.classList.add("dragging");
+            sticker.setPointerCapture(event.pointerId);
+
+            const rect = sticker.parentElement.getBoundingClientRect();
+            const stickerRect = sticker.getBoundingClientRect();
+
+            startX = event.clientX;
+            startY = event.clientY;
+
+            startLeft = stickerRect.left - rect.left;
+            startTop = stickerRect.top - rect.top;
+        });
+
+        sticker.addEventListener("pointermove", event => {
+            if (!dragging) return;
+
+            const rect = sticker.parentElement.getBoundingClientRect();
+            const dx = event.clientX - startX;
+            const dy = event.clientY - startY;
+
+            let x = startLeft + dx;
+            let y = startTop + dy;
+
+            const maxX = rect.width - sticker.offsetWidth;
+            const maxY = rect.height - sticker.offsetHeight;
+
+            x = Math.max(0, Math.min(x, maxX));
+            y = Math.max(0, Math.min(y, maxY));
+
+            sticker.style.left = (x / rect.width * 100) + "%";
+            sticker.style.top = (y / rect.height * 100) + "%";
+        });
+
+        function stopDragging(event) {
+            if (!dragging) return;
+            dragging = false;
+            sticker.classList.remove("dragging");
+
+            try {
+                sticker.releasePointerCapture(event.pointerId);
+            } catch (e) {}
+        }
+
+        sticker.addEventListener("pointerup", stopDragging);
+        sticker.addEventListener("pointercancel", stopDragging);
+    });
+
+    /*
+      Swipe navigation.
+      A swipe is only recognized if the gesture starts on empty
+      notebook space, not on a sticker.
+    */
+    let swipeStartX = null;
+    let swipeStartY = null;
+
+    book.addEventListener("pointerdown", event => {
+        if (event.target.classList.contains("sticker")) return;
+        swipeStartX = event.clientX;
+        swipeStartY = event.clientY;
+    });
+
+    book.addEventListener("pointerup", event => {
+        if (swipeStartX === null) return;
+
+        const dx = event.clientX - swipeStartX;
+        const dy = event.clientY - swipeStartY;
+
+        swipeStartX = null;
+        swipeStartY = null;
+
+        if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+
+        if (dx < 0) {
+            showPage(currentPage + 1, "forward");
+        } else {
+            showPage(currentPage - 1, "back");
+        }
+    });
+
+    updateNavigation();
+</script>
+
+</body>
+</html>
